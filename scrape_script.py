@@ -15,11 +15,15 @@ players = dict()
 def scrapepopflash(user):
     response = requests.get("https://popflash.site/user/"+user)
     data = response.text
+    
     soup = BeautifulSoup(data, 'html.parser')
     team1win = False
     team2win = False
     global players
     global matches
+    for player, elo in players.items():
+        if player == user:
+            players[player] = [elo[0], getUsername(data)]
     if "Too many requests" in data:
         return False
 
@@ -44,7 +48,7 @@ def scrapepopflash(user):
                 if "/user/" in nhyperlink.get('href'):
                     if playersCount < 5:
                         if nhyperlink.get('href')[-6:] not in players:
-                            players[nhyperlink.get('href')[-6:]] = 1000
+                            players[nhyperlink.get('href')[-6:]] = [1000, "null"]
                         team1.append(nhyperlink.get('href')[-6:])
                     else:
                         team2.append(nhyperlink.get('href')[-6:])
@@ -52,17 +56,13 @@ def scrapepopflash(user):
 
             for player, elo in players.items():
                 if (player in team1 and team1win == True):
-                    players[player] = elo +3
-                    elo = elo + 50
+                    players[player] = [elo[0] +3, elo[1]]
                 elif (player in team1 and team1win == False):
-                    players[player] = elo -5
-                    elo = elo - 100
+                    players[player] = [elo[0] -5, elo[1]]
                 elif (player in team2 and team2win == True):
-                    players[player] = elo +3
-                    elo = elo + 50
+                    players[player] = [elo[0] +3, elo[1]]
                 elif (player in team2 and team2win == False):
-                    players[player] = elo -5
-                    elo = elo - 100
+                    players[player] = [elo[0] -5, elo[1]]
 def main():
     success = scrapepopflash("590843")
     if success == False:
@@ -70,7 +70,7 @@ def main():
     else:
         print("working...")
         for pl in list(players):
-            success = ext_scrapepopflash(pl)
+            success = scrapepopflash(pl)
             if success == False:
                 print("Too many requests, try again later")
                 break
@@ -80,7 +80,7 @@ def main():
         
 def getUsername(data):
     start = data.find('<h3 style="text-transform: uppercase;"><span>', 0, 1000000)
-    print(data[start+45:start+61])
+    return data[start+45:data.find('<',start+45, 1000000)]
 
 main()
     
