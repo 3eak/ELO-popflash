@@ -74,6 +74,12 @@ def main():
             if success == False:
                 print("Too many requests, try again later")
                 break
+        for pl in list(players):
+            if players.get(pl)[1] == "null":
+                success = scrapepopflash(pl)
+                if success == False:
+                    print("Too many requests, try again later")
+                    break
         print("Matches added: ",len(matches))
         print(matches)
         print(players)
