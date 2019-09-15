@@ -8,11 +8,24 @@ from sklearn import preprocessing
 import numpy as np
 from sklearn import tree
 from sklearn.tree import export_graphviz
+from pymongo import MongoClient
+from pprint import pprint
+import json
+
+with open('config.json') as config_file:
+    config_load = json.load(config_file)
+
 
 matches = list()
 players = dict()
         
-def scrapepopflash(user):
+mongo = config_load['mongoAddress']
+client = MongoClient(mongo)
+db = client.stefan
+collection = db.custom_elo
+collection_matches = db.matches
+
+def scrapepopflash(user, name):
     response = requests.get("https://popflash.site/user/"+user)
     data = response.text
     
@@ -23,13 +36,15 @@ def scrapepopflash(user):
     global matches
     for player, elo in players.items():
         if player == user:
-            players[player] = [elo[0], getUsername(data)]
+            players[player] = [getUsername(data), elo[1]]
+
     if "Too many requests" in data:
         return False
 
     for hyperlink in soup.find_all('a'):
         if ("/match/" in hyperlink.get('href') and hyperlink.get('href') not in matches):
             matches.append(hyperlink.get('href'))
+            collection_matches.insert_one({"matchId": hyperlink.get('href')})
             match = requests.get("https://popflash.site"+hyperlink.get('href'))
             nsoup = BeautifulSoup(match.text, 'html.parser')
             t1win = """      <div class="score score-1">
@@ -47,42 +62,49 @@ def scrapepopflash(user):
             for nhyperlink in nsoup.find_all('a'):
                 if "/user/" in nhyperlink.get('href'):
                     if playersCount < 5:
-                        if nhyperlink.get('href')[-6:] not in players:
-                            players[nhyperlink.get('href')[-6:]] = [1000, "null"]
-                        team1.append(nhyperlink.get('href')[-6:])
+                        if nhyperlink.get('href')[6:] not in players:
+                            players[nhyperlink.get('href')[6:]] = [1000, "null"]
+                            collection.insert_one({"userId": nhyperlink.get('href')[6:], "username": "null", "ELO": 1000})
+                        team1.append(nhyperlink.get('href')[6:])
                     else:
-                        team2.append(nhyperlink.get('href')[-6:])
+                        team2.append(nhyperlink.get('href')[6:])
                     playersCount+= 1
 
             for player, elo in players.items():
+                print(elo)
                 if (player in team1 and team1win == True):
-                    players[player] = [elo[0] +3, elo[1]]
+                    players[player] = [elo[0], elo[1] + 3]
                 elif (player in team1 and team1win == False):
-                    players[player] = [elo[0] -5, elo[1]]
+                    players[player] = [elo[0], elo[1] - 5]
                 elif (player in team2 and team2win == True):
-                    players[player] = [elo[0] +3, elo[1]]
+                    players[player] = [elo[0], elo[1] + 3]
                 elif (player in team2 and team2win == False):
-                    players[player] = [elo[0] -5, elo[1]]
+                    players[player] = [elo[0], elo[1] - 5]
 def main():
-    success = scrapepopflash("590843")
-    if success == False:
-        print("Too many requests, try again later")
-    else:
-        print("working...")
-        for pl in list(players):
-            success = scrapepopflash(pl)
-            if success == False:
-                print("Too many requests, try again later")
-                break
-        for pl in list(players):
-            if players.get(pl)[1] == "null":
-                success = scrapepopflash(pl)
-                if success == False:
-                    print("Too many requests, try again later")
-                    break
-        print("Matches added: ",len(matches))
-        print(matches)
-        print(players)
+
+    # Collect matches from mongo
+    for match in collection_matches.find():
+        matches.append(match.get('matchId'))
+    oldMatches = len(matches)
+    # Collect player data from mongo
+    for player in collection.find():
+        players[player.get('userId')] = [player.get('username'), player.get('ELO')]
+    # Loop through each player and recursively get each match played
+    print(players)
+    for player in collection.find():
+        print(player.get('userId'))
+        success = scrapepopflash(player.get('userId'), player.get('username'))
+        if success == False:
+            print("Too many requests, try again later")
+            break
+    # Update players with new information collected
+    for pl in list(players):
+        myquery = { "userId": { "$regex": pl}}
+        newvalues = { "$set": { "username": players.get(pl)[1], "ELO": players.get(pl)[0] } }
+        x = collection.update_many(myquery, newvalues)
+
+    client.close()
+    print("Matches added: ",len(matches)-oldMatches)
         
 def getUsername(data):
     start = data.find('<h3 style="text-transform: uppercase;"><span>', 0, 1000000)
