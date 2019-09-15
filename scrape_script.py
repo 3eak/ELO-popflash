@@ -63,7 +63,7 @@ def scrapepopflash(user, name):
                 if "/user/" in nhyperlink.get('href'):
                     if playersCount < 5:
                         if nhyperlink.get('href')[6:] not in players:
-                            players[nhyperlink.get('href')[6:]] = [1000, "null"]
+                            players[nhyperlink.get('href')[6:]] = ["null", 1000]
                             collection.insert_one({"userId": nhyperlink.get('href')[6:], "username": "null", "ELO": 1000})
                         team1.append(nhyperlink.get('href')[6:])
                     else:
@@ -100,7 +100,7 @@ def main():
     # Update players with new information collected
     for pl in list(players):
         myquery = { "userId": { "$regex": pl}}
-        newvalues = { "$set": { "username": players.get(pl)[1], "ELO": players.get(pl)[0] } }
+        newvalues = { "$set": { "username": players.get(pl)[0], "ELO": players.get(pl)[1] } }
         x = collection.update_many(myquery, newvalues)
 
     client.close()

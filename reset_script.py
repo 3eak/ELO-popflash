@@ -12,6 +12,7 @@ import numpy as np
 from sklearn import tree
 from sklearn.tree import export_graphviz
 import json
+from pymongo import MongoClient
 
 """
 Created on Sun Sep 15 12:12:08 2019

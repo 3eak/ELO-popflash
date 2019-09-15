@@ -44,6 +44,16 @@ bot.on("message", async message => {
                 console.log(res);
             });
             break;
+        case "leaderboard":
+           // const m3 = await message.channel.send("Working...");
+                PythonShell.run('./leaderboard_script.py', null, async function (err,res) {
+                if (err) throw err;
+                console.log('finished')
+              //  m3.edit(res[1])
+                message.channel.send(res[0]);
+                console.log(res);
+            });
+            break;
 
         default:
             message.channel.send(`Sorry, I don't quite understand what you're asking.`);
