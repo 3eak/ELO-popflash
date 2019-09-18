@@ -31,7 +31,7 @@ bot.on("message", async message => {
              PythonShell.run('./scrape_script.py', null, function (err,res) {
                 if (err) throw err;
                 console.log('finished')
-                m1.edit(res[1])
+                m1.edit(res[0])
                 console.log(res);
             });
             break;
@@ -45,13 +45,20 @@ bot.on("message", async message => {
             });
             break;
         case "leaderboard":
-           // const m3 = await message.channel.send("Working...");
                 PythonShell.run('./leaderboard_script.py', null, async function (err,res) {
                 if (err) throw err;
                 console.log('finished')
-              //  m3.edit(res[1])
-                message.channel.send(res[0]);
-                console.log(res);
+              var newres1 = res[0].replace(/!@£%&/gi, '\n');
+              var newres2 = res[1].replace(/!@£%&/gi, '\n');
+                message.channel.send({embed: {
+                    color: 3447003,
+                    title: "Corner shop bois:",
+                    fields: [
+                      { name: "Players", value: newres1, inline: true},
+                      { name: "Scores", value: newres2, inline: true}
+                    ]
+                  }
+                });
             });
             break;
 

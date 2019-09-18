@@ -44,7 +44,6 @@ def scrapepopflash(user, name):
     for hyperlink in soup.find_all('a'):
         if ("/match/" in hyperlink.get('href') and hyperlink.get('href') not in matches):
             matches.append(hyperlink.get('href'))
-            collection_matches.insert_one({"matchId": hyperlink.get('href')})
             match = requests.get("https://popflash.site"+hyperlink.get('href'))
             nsoup = BeautifulSoup(match.text, 'html.parser')
             t1win = """      <div class="score score-1">
@@ -62,16 +61,17 @@ def scrapepopflash(user, name):
             for nhyperlink in nsoup.find_all('a'):
                 if "/user/" in nhyperlink.get('href'):
                     if playersCount < 5:
+                        ''' Used for adding new players
                         if nhyperlink.get('href')[6:] not in players:
                             players[nhyperlink.get('href')[6:]] = ["null", 1000]
                             collection.insert_one({"userId": nhyperlink.get('href')[6:], "username": "null", "ELO": 1000})
+                        '''
                         team1.append(nhyperlink.get('href')[6:])
                     else:
                         team2.append(nhyperlink.get('href')[6:])
                     playersCount+= 1
 
             for player, elo in players.items():
-                print(elo)
                 if (player in team1 and team1win == True):
                     players[player] = [elo[0], elo[1] + 3]
                 elif (player in team1 and team1win == False):
@@ -90,9 +90,9 @@ def main():
     for player in collection.find():
         players[player.get('userId')] = [player.get('username'), player.get('ELO')]
     # Loop through each player and recursively get each match played
-    print(players)
+    #print(players)
     for player in collection.find():
-        print(player.get('userId'))
+        #print(player.get('userId'))
         success = scrapepopflash(player.get('userId'), player.get('username'))
         if success == False:
             print("Too many requests, try again later")
@@ -101,7 +101,9 @@ def main():
     for pl in list(players):
         myquery = { "userId": { "$regex": pl}}
         newvalues = { "$set": { "username": players.get(pl)[0], "ELO": players.get(pl)[1] } }
-        x = collection.update_many(myquery, newvalues)
+        collection.update_many(myquery, newvalues)
+    for i in range(len(matches)):
+        collection_matches.insert_one({"matchId": matches[i]})
 
     client.close()
     print("Matches added: ",len(matches)-oldMatches)
